@@ -1,0 +1,611 @@
+// ============================================
+// VLINKED - SCHEMA PRISMA V1.0
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// CORE - AUTENTICAÇÃO E USUÁRIOS
+// ============================================
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  emailVerified Boolean   @default(false) @map("email_verified")
+  verificationToken   String?   @unique @map("verification_token")
+  verificationExpires DateTime? @map("verification_expires")
+  phone         String?   @unique
+  phoneVerified Boolean   @default(false) @map("phone_verified")
+  
+  role          UserRole  @default(USER)
+  status        UserStatus @default(PENDING_VERIFICATION)
+  
+  mfaEnabled    Boolean   @default(false) @map("mfa_enabled")
+  mfaSecret     String?   @map("mfa_secret")
+  
+  // Timestamps
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  lastLoginAt   DateTime? @map("last_login_at")
+  
+  // Relations
+  sessions      Session[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  videos        Video[]
+  profile       Profile?
+  quota         UserQuota?
+  
+  // Interactions
+  likes         Like[]
+  comments      Comment[]
+  shares        Share[]
+  views         View[]
+  
+  // Follows
+  followers     Follow[] @relation("UserFollowers")
+  following     Follow[] @relation("UserFollowing")
+  
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  PREMIUM
+  ADMIN
+  MODERATOR
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  PENDING_VERIFICATION
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  tokenHash   String   @unique @map("token_hash") // SHA-256 hash, nunca plaintext
+  expiresAt   DateTime @map("expires_at")
+  revoked     Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, revoked, expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// PROFILE
+// ============================================
+
+model Profile {
+  id          String   @id @default(uuid())
+  userId      String   @unique @map("user_id")
+  
+  displayName String   @map("display_name")
+  slug        String   @unique
+  bio         String?  @db.Text
+  
+  avatarUrl   String?  @map("avatar_url")
+  bannerUrl   String?  @map("banner_url")
+  
+  // Service Category (for discovery)
+  serviceCategory String? @map("service_category")
+  
+  // Profession & Skills
+  profession  String?
+  skills      String[] @default([])
+  
+  // Location (for local discovery)
+  city        String?
+  region      String?  // State/Province
+  country     String?
+  coordinates Json?    // { lat: number, lng: number } for future geo features
+  
+  // Availability
+  isAvailableForHire Boolean @default(true) @map("is_available_for_hire")
+  
+  // Stats (denormalizados para performance)
+  followersCount  Int @default(0) @map("followers_count")
+  followingCount  Int @default(0) @map("following_count")
+  videosCount     Int @default(0) @map("videos_count")
+  
+  // Professional Reputation Score (0-100)
+  reputationScore Float @default(50) @map("reputation_score")
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([slug])
+  @@index([serviceCategory])
+  @@index([profession])
+  @@index([city, region, country])
+  @@index([isAvailableForHire])
+  @@index([reputationScore])
+  @@map("profiles")
+}
+
+// ============================================
+// USER QUOTA - PROTEÇÃO FINANCEIRA
+// ============================================
+
+model UserQuota {
+  id              String    @id @default(uuid())
+  userId          String    @unique @map("user_id")
+  
+  tier            QuotaTier @default(FREE)
+  
+  // Limites mensais
+  maxVideoUploads Int       @default(5) @map("max_video_uploads")
+  maxVideoDuration Int      @default(180) @map("max_video_duration") // segundos
+  maxStorageGB    Decimal   @default(1) @map("max_storage_gb") @db.Decimal(8, 2)
+  maxAIAnalysis   Int       @default(3) @map("max_ai_analysis")
+  
+  // Uso atual (reseta mensalmente)
+  uploadsUsed     Int       @default(0) @map("uploads_used")
+  aiUsed          Int       @default(0) @map("ai_used")
+  storageUsedGB   Decimal   @default(0) @map("storage_used_gb") @db.Decimal(8, 2)
+  
+  // Créditos compráveis
+  credits         Int       @default(0)
+  
+  // Tracking de reset
+  lastResetAt     DateTime  @default(now()) @map("last_reset_at")
+  
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_quotas")
+}
+
+enum QuotaTier {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?  @map("user_id")
+  action        String
+  entity        String
+  entityId      String?  @map("entity_id")
+  oldValue      Json?    @map("old_value")
+  newValue      Json?    @map("new_value")
+  correlationId String?  @map("correlation_id")
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([userId, createdAt])
+  @@index([correlationId])
+  @@index([action, entity])
+  @@map("audit_logs")
+}
+
+// ============================================
+// STUDIO - VÍDEOS
+// ============================================
+
+model Video {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  
+  title       String
+  description String?  @db.Text
+  type        VideoType @default(WORK_SAMPLE)
+  
+  // Service Category (for discovery)
+  serviceCategory String? @map("service_category")
+  
+  // Location (inherited from profile, denormalized for feed ranking)
+  city        String?
+  region      String?
+  country     String?
+  
+  // URLs
+  rawUrl      String   @map("raw_url")
+  processedUrl String? @map("processed_url")
+  thumbnailUrl String? @map("thumbnail_url")
+  hlsUrl      String?  @map("hls_url")
+  
+  // Metadata
+  duration    Int?     // segundos
+  resolution  String?  // 1080p, 720p, etc
+  fileSize    BigInt?
+  
+  // AI Analysis
+  transcription String? @db.Text
+  aiSummary   String?  @map("ai_summary") @db.Text
+  aiTags      String[] @map("ai_tags")
+  keyMoments  Json?    @map("key_moments")
+  sentiment   Sentiment?
+  
+  // Stats
+  viewsCount    Int @default(0) @map("views_count")
+  likesCount    Int @default(0) @map("likes_count")
+  commentsCount Int @default(0) @map("comments_count")
+  sharesCount   Int @default(0) @map("shares_count")
+  
+  // Status
+  status      VideoStatus @default(UPLOADING)
+  visibility  Visibility  @default(PUBLIC)
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  publishedAt DateTime? @map("published_at")
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedItems   FeedItem[]
+  
+  // Interactions
+  likes       Like[]
+  comments    Comment[]
+  shares      Share[]
+  views       View[]
+  
+  // Metrics
+  viewMetrics ViewMetrics?
+  
+  @@index([userId, status, visibility])
+  @@index([type, status])
+  @@index([serviceCategory])
+  @@index([city, region, country])
+  @@index([createdAt])
+  @@index([aiTags])
+  @@map("videos")
+}
+
+enum VideoType {
+  VIDEO_CV
+  WORK_SAMPLE
+  PORTFOLIO
+  TIP
+  BEHIND_SCENES
+}
+
+enum VideoStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  FAILED
+  HIDDEN
+}
+
+enum Visibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+// ============================================
+// SERVICE CATEGORIES
+// ============================================
+
+model ServiceCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  icon        String?  // Emoji ou ícone
+  color       String?  // Cor para UI
+  
+  // Stats
+  professionalsCount Int @default(0) @map("professionals_count")
+  videosCount        Int @default(0) @map("videos_count")
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@index([slug])
+  @@map("service_categories")
+}
+
+// ============================================
+// FEED SYSTEM - PRÉ-INDEXADO
+// ============================================
+
+model FeedItem {
+  id          String   @id @default(uuid())
+  videoId     String   @map("video_id")
+  
+  // Score pré-calculado (nunca calcular em tempo real)
+  score       Float    @default(0)
+  
+  // Service Discovery Fields
+  serviceCategory String? @map("service_category")
+  city        String?
+  region      String?
+  country     String?
+  
+  // Fatores de ranking (para debug e re-ranking futuro)
+  // Estrutura: { 
+  //   recency, engagement, aiRelevance, profileScore,
+  //   watchTime?, completionRate?, skipRate?,
+  //   skillMatch?, locationProximity?, reputation?
+  // }
+  factors     Json     
+  // Fatores atuais:
+  // - recency: number (0-1) - Idade do vídeo (mais recente = maior)
+  // - engagement: number (0-1) - Taxa de engajamento (likes/views, comentários)
+  // - aiRelevance: number (0-1) - Qualidade/relevância determinada pela IA
+  // - profileScore: number (0-1) - Reputação do autor/perfil
+  // 
+  // Métricas futuras (para ranking aprimorado):
+  // - watchTime: number (0-1) - Tempo médio de visualização
+  // - completionRate: number (0-1) - Taxa de conclusão do vídeo
+  // - skipRate: number (0-1) - Taxa de pulo (menor é melhor)
+  // - skillMatch: number (0-1) - Match de skills com usuário
+  // - locationProximity: number (0-1) - Proximidade geográfica
+  // - reputation: number (0-1) - Score de reputação do profissional
+  
+  // Métricas de performance
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  
+  // Target audience para personalização futura
+  targetAudience Json? // { professions: [], locations: [], interests: [], serviceCategories: [] }
+  
+  // Expiração para re-indexação periódica
+  expiresAt   DateTime? @map("expires_at")
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  video       Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  // ÍNDICE CRÍTICO: Consulta do feed usa este índice
+  @@index([score, createdAt])
+  @@index([serviceCategory, score])
+  @@index([city, region, score])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@map("feed_items")
+}
+
+// ============================================
+// INTERACTIONS - LIKES, COMMENTS, SHARES, VIEWS
+// ============================================
+
+model Like {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  videoId   String   @map("video_id")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  // Um usuário pode curtir um vídeo apenas uma vez
+  @@unique([userId, videoId])
+  @@index([videoId, createdAt])
+  @@index([userId, createdAt])
+  @@map("likes")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  videoId   String   @map("video_id")
+  
+  content   String   @db.Text
+  
+  // Comentários aninhados (respostas)
+  parentId  String?  @map("parent_id")
+  
+  // Soft delete
+  deletedAt DateTime? @map("deleted_at")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   Comment[] @relation("CommentReplies")
+  
+  @@index([videoId, createdAt])
+  @@index([userId, createdAt])
+  @@index([parentId])
+  @@map("comments")
+}
+
+model Share {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  videoId   String   @map("video_id")
+  
+  // Plataforma de compartilhamento
+  platform  SharePlatform
+  
+  // URL encurtada (opcional)
+  shortUrl  String?  @map("short_url")
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  @@index([videoId, createdAt])
+  @@index([userId, createdAt])
+  @@map("shares")
+}
+
+enum SharePlatform {
+  COPY_LINK
+  WHATSAPP
+  TELEGRAM
+  TWITTER
+  FACEBOOK
+  LINKEDIN
+  EMAIL
+  EMBED
+}
+
+model View {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id") // Nullable para views anônimas
+  videoId   String   @map("video_id")
+  
+  // Informações da view
+  duration  Int      @default(0) // Segundos assistidos
+  completed Boolean  @default(false) // Assistiu até o final
+  
+  // Device/Location info (para analytics)
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  country   String?
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  // Um usuário só conta uma view por vídeo por dia
+  @@unique([userId, videoId, createdAt])
+  @@index([videoId, createdAt])
+  @@index([userId, createdAt])
+  @@map("views")
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String   @map("follower_id")
+  followingId String   @map("following_id")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  follower    User     @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  // Um usuário só pode seguir outro uma vez
+  @@unique([followerId, followingId])
+  @@index([followerId, createdAt])
+  @@index([followingId, createdAt])
+  @@map("follows")
+}
+
+// ============================================
+// VIEW METRICS - MÉTRICAS AVANÇADAS PARA RANKING
+// ============================================
+
+model ViewMetrics {
+  id          String   @id @default(uuid())
+  videoId     String   @map("video_id")
+  
+  // Métricas agregadas (atualizadas periodicamente)
+  totalViews        Int @default(0) @map("total_views")
+  uniqueViewers     Int @default(0) @map("unique_viewers")
+  
+  // Métricas de engajamento (0-1)
+  avgWatchTime      Float @default(0) @map("avg_watch_time")      // Tempo médio de visualização em segundos
+  avgCompletionRate Float @default(0) @map("avg_completion_rate") // Taxa média de conclusão (0-1)
+  avgSkipRate       Float @default(0) @map("avg_skip_rate")       // Taxa média de pulo (0-1)
+  
+  // Métricas por segmento de tempo
+  watchTimeDistribution Json? @map("watch_time_distribution") // { "0-25%": 100, "25-50%": 80, ... }
+  dropOffPoints         Json? @map("drop_off_points")         // { "10s": 0.9, "30s": 0.7, ... }
+  
+  // Métricas de retenção
+  retentionCurve Json? @map("retention_curve") // [1.0, 0.95, 0.85, ...] - porcentagem a cada 10%
+  
+  // Timestamps
+  calculatedAt DateTime @default(now()) @map("calculated_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  @@unique([videoId])
+  @@index([videoId, updatedAt])
+  @@map("view_metrics")
+}
+
+// ============================================
+// ANALYTICS EVENTS - EVENTOS PARA ANÁLISE
+// ============================================
+
+model AnalyticsEvent {
+  id          String   @id @default(uuid())
+  
+  // Identificação
+  eventType   String   @map("event_type") // video_viewed, video_liked, etc
+  userId      String?  @map("user_id")
+  sessionId   String?  @map("session_id")
+  
+  // Entidade afetada
+  entityType  String   @map("entity_type") // video, profile, comment
+  entityId    String   @map("entity_id")
+  
+  // Dados do evento
+  metadata    Json?    // Dados específicos do evento
+  
+  // Contexto
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  country     String?
+  referrer    String?
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([eventType, createdAt])
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("analytics_events")
+}

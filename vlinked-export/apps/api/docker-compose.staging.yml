@@ -1,0 +1,139 @@
+# ============================================
+# VLINKED API - DOCKER COMPOSE (STAGING)
+# ============================================
+
+version: '3.8'
+
+services:
+  # API Principal
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vlinked-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=staging
+      - PORT=3000
+      - DATABASE_URL=postgresql://vlinked:vlinked_staging@postgres:5432/vlinked?schema=public
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-r2}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - STORAGE_BUCKET=${STORAGE_BUCKET}
+      - STORAGE_ACCESS_KEY_ID=${STORAGE_ACCESS_KEY_ID}
+      - STORAGE_SECRET_ACCESS_KEY=${STORAGE_SECRET_ACCESS_KEY}
+      - STORAGE_PUBLIC_URL=${STORAGE_PUBLIC_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - vlinked-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Worker de Processamento de Vídeo
+  video-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: vlinked-video-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=staging
+      - DATABASE_URL=postgresql://vlinked:vlinked_staging@postgres:5432/vlinked?schema=public
+      - REDIS_URL=redis://redis:6379
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-r2}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - STORAGE_BUCKET=${STORAGE_BUCKET}
+      - STORAGE_ACCESS_KEY_ID=${STORAGE_ACCESS_KEY_ID}
+      - STORAGE_SECRET_ACCESS_KEY=${STORAGE_SECRET_ACCESS_KEY}
+      - STORAGE_PUBLIC_URL=${STORAGE_PUBLIC_URL}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - vlinked-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+
+  # Worker de Análise de IA
+  ai-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: vlinked-ai-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=staging
+      - DATABASE_URL=postgresql://vlinked:vlinked_staging@postgres:5432/vlinked?schema=public
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AI_MOCK_ENABLED=${AI_MOCK_ENABLED:-false}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - vlinked-network
+    command: ["node", "dist/workers/ai-analysis.worker.js"]
+
+  # PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: vlinked-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=vlinked
+      - POSTGRES_PASSWORD=vlinked_staging
+      - POSTGRES_DB=vlinked
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - vlinked-network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: vlinked-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - vlinked-network
+
+  # Nginx (Reverse Proxy)
+  nginx:
+    image: nginx:alpine
+    container_name: vlinked-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+    networks:
+      - vlinked-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  vlinked-network:
+    driver: bridge
