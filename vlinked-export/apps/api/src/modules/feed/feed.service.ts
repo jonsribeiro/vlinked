@@ -34,8 +34,7 @@ export interface FeedItem {
     id: string;
     name: string | null;
     avatarUrl: string | null;
-    headline: string | null;
-    verified: boolean;
+    profession: string | null;
   };
   score: number;
   factors?: {
@@ -125,7 +124,7 @@ export class FeedService {
     };
 
     // Salvar no cache
-    await this.redis.setex(cacheKey, this.FEED_CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.FEED_CACHE_TTL);
 
     return result;
   }
@@ -192,7 +191,7 @@ export class FeedService {
       hasMore,
     };
 
-    await this.redis.setex(cacheKey, this.FEED_CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.FEED_CACHE_TTL);
 
     return result;
   }
@@ -215,7 +214,7 @@ export class FeedService {
       hasMore: false,
     };
 
-    await this.redis.setex(cacheKey, this.FEED_CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.FEED_CACHE_TTL);
 
     return result;
   }
@@ -264,7 +263,7 @@ export class FeedService {
     };
 
     // Cache por 10 minutos para trending
-    await this.redis.setex(cacheKey, 600, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), 600);
 
     return result;
   }
@@ -346,7 +345,7 @@ export class FeedService {
       hasMore,
     };
 
-    await this.redis.setex(cacheKey, this.FEED_CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.FEED_CACHE_TTL);
 
     return result;
   }
@@ -399,7 +398,7 @@ export class FeedService {
     };
 
     // Cache por 1 hora
-    await this.redis.setex(cacheKey, 3600, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), 3600);
 
     return result;
   }
@@ -417,7 +416,7 @@ export class FeedService {
     for (const pattern of patterns) {
       const keys = await this.redis.keys(pattern);
       if (keys.length > 0) {
-        await this.redis.del(...keys);
+        await this.redis.del(keys);
       }
     }
   }
@@ -441,10 +440,9 @@ export class FeedService {
       },
       author: {
         id: item.video.user.id,
-        name: item.video.user.profile?.name,
-        avatarUrl: item.video.user.profile?.avatarUrl,
-        headline: item.video.user.profile?.headline,
-        verified: item.video.user.profile?.verified || false,
+        name: item.video.user.profile?.displayName || null,
+        avatarUrl: item.video.user.profile?.avatarUrl || null,
+        profession: item.video.user.profile?.profession || null,
       },
       score: item.score,
       factors: item.factors as any,
@@ -468,10 +466,9 @@ export class FeedService {
       },
       author: {
         id: video.user.id,
-        name: video.user.profile?.name,
-        avatarUrl: video.user.profile?.avatarUrl,
-        headline: video.user.profile?.headline,
-        verified: video.user.profile?.verified || false,
+        name: video.user.profile?.displayName || null,
+        avatarUrl: video.user.profile?.avatarUrl || null,
+        profession: video.user.profile?.profession || null,
       },
       score: 0,
     };

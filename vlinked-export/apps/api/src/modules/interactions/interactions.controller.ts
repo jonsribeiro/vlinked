@@ -19,11 +19,12 @@ import { FollowService } from './follow.service';
 import { ShareService } from './share.service';
 import { ViewService } from './view.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OptionalJwtGuard } from './guards/optional-jwt.guard';
 import {
   LikeResponseDto,
   CreateCommentDto,
+  CommentResponseDto,
   CommentsListResponseDto,
   FollowResponseDto,
   ShareVideoDto,

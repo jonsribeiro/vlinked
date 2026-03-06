@@ -115,7 +115,7 @@ export class SearchService {
       hasMore,
     };
 
-    await this.redis.setex(cacheKey, this.SEARCH_CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.SEARCH_CACHE_TTL);
 
     return result;
   }
@@ -162,7 +162,7 @@ export class SearchService {
       .slice(0, limit)
       .map(([tag]) => tag);
 
-    await this.redis.setex(cacheKey, 300, JSON.stringify(suggestions));
+    await this.redis.set(cacheKey, JSON.stringify(suggestions), 300);
 
     return suggestions;
   }
@@ -203,7 +203,7 @@ export class SearchService {
       .slice(0, limit)
       .map(([tag]) => tag);
 
-    await this.redis.setex(cacheKey, 3600, JSON.stringify(trending));
+    await this.redis.set(cacheKey, JSON.stringify(trending), 3600);
 
     return trending;
   }

@@ -8,10 +8,10 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '@/shared/prisma/prisma.service';
+import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import { EmailService } from '@/modules/email/email.service';
+import { EmailService } from '../email/email.service';
 import {
   RegisterDto,
   LoginDto,

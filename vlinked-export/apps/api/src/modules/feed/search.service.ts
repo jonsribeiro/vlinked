@@ -141,7 +141,7 @@ export class SearchService {
                 select: {
                   displayName: true,
                   avatarUrl: true,
-                  headline: true,
+                  profession: true,
                 },
               },
             },
@@ -171,7 +171,7 @@ export class SearchService {
     };
 
     // Salvar cache
-    await this.redis.setex(cacheKey, this.SEARCH_CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.SEARCH_CACHE_TTL);
 
     return result;
   }
@@ -202,7 +202,7 @@ export class SearchService {
                 select: {
                   displayName: true,
                   avatarUrl: true,
-                  headline: true,
+                  profession: true,
                 },
               },
             },
@@ -254,7 +254,7 @@ export class SearchService {
                 select: {
                   displayName: true,
                   avatarUrl: true,
-                  headline: true,
+                  profession: true,
                 },
               },
             },
@@ -315,7 +315,7 @@ export class SearchService {
 
     const result = Array.from(suggestions).slice(0, limit);
     
-    await this.redis.setex(cacheKey, 300, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), 300);
     
     return result;
   }
@@ -354,7 +354,7 @@ export class SearchService {
       .slice(0, limit)
       .map(([tag]) => tag);
 
-    await this.redis.setex(cacheKey, 3600, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), 3600);
     
     return result;
   }

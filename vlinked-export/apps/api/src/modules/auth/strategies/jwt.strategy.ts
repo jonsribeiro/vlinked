@@ -14,7 +14,7 @@ export interface JwtPayload {
 }
 
 export interface AuthenticatedUser {
-  userId: string;
+  sub: string; // userId (mapped from JWT payload)
   email: string;
   role: string;
   emailVerified: boolean;
@@ -59,7 +59,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     return {
-      userId: user.id,
+      sub: user.id,
       email: user.email,
       role: user.role,
       emailVerified: user.emailVerified,

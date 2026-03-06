@@ -105,10 +105,16 @@ model Profile {
   id          String   @id @default(uuid())
   userId      String   @unique @map("user_id")
   
+  // Display name (used as 'name' in APIs)
   displayName String   @map("display_name")
+  
+  // URL slug
   slug        String   @unique
+  
+  // Bio/Description
   bio         String?  @db.Text
   
+  // Avatar and banner URLs
   avatarUrl   String?  @map("avatar_url")
   bannerUrl   String?  @map("banner_url")
   
@@ -118,6 +124,9 @@ model Profile {
   // Profession & Skills
   profession  String?
   skills      String[] @default([])
+  
+  // Interests for feed personalization
+  interests   String[] @default([])
   
   // Location (for local discovery)
   city        String?
@@ -365,25 +374,7 @@ model FeedItem {
   country     String?
   
   // Fatores de ranking (para debug e re-ranking futuro)
-  // Estrutura: { 
-  //   recency, engagement, aiRelevance, profileScore,
-  //   watchTime?, completionRate?, skipRate?,
-  //   skillMatch?, locationProximity?, reputation?
-  // }
-  factors     Json     
-  // Fatores atuais:
-  // - recency: number (0-1) - Idade do vídeo (mais recente = maior)
-  // - engagement: number (0-1) - Taxa de engajamento (likes/views, comentários)
-  // - aiRelevance: number (0-1) - Qualidade/relevância determinada pela IA
-  // - profileScore: number (0-1) - Reputação do autor/perfil
-  // 
-  // Métricas futuras (para ranking aprimorado):
-  // - watchTime: number (0-1) - Tempo médio de visualização
-  // - completionRate: number (0-1) - Taxa de conclusão do vídeo
-  // - skipRate: number (0-1) - Taxa de pulo (menor é melhor)
-  // - skillMatch: number (0-1) - Match de skills com usuário
-  // - locationProximity: number (0-1) - Proximidade geográfica
-  // - reputation: number (0-1) - Score de reputação do profissional
+  factors     Json     @default("{}")
   
   // Métricas de performance
   impressions Int      @default(0)

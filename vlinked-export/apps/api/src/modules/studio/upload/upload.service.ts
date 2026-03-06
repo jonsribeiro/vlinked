@@ -125,10 +125,10 @@ export class UploadService {
       metadata,
     };
 
-    await this.redis.setex(
+    await this.redis.set(
       `upload:session:${sessionId}`,
-      1800, // 30 minutos
       JSON.stringify(session),
+      1800, // 30 minutos
     );
 
     this.logger.log(`Presigned URL gerada: ${sessionId} para usuário ${userId}`);
@@ -189,10 +189,10 @@ export class UploadService {
     });
 
     // Atualizar sessão com videoId
-    await this.redis.setex(
+    await this.redis.set(
       `upload:video:${video.id}`,
-      3600,
       JSON.stringify({ sessionId, storageKey: session.s3Key }),
+      3600,
     );
 
     this.logger.log(`Upload confirmado: ${sessionId}, vídeo: ${video.id}`);
@@ -306,10 +306,10 @@ export class UploadService {
 
   private async saveSession(session: UploadSession): Promise<void> {
     const ttl = Math.floor((session.expiresAt.getTime() - Date.now()) / 1000);
-    await this.redis.setex(
+    await this.redis.set(
       `upload:session:${session.sessionId}`,
-      Math.max(ttl, 60),
       JSON.stringify(session),
+      Math.max(ttl, 60),
     );
   }
 

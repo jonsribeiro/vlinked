@@ -168,7 +168,7 @@ export class ServiceDiscoveryService {
     };
 
     // Salvar no cache
-    await this.redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
 
     return result;
   }
@@ -191,7 +191,7 @@ export class ServiceDiscoveryService {
       ],
     });
 
-    await this.redis.setex(cacheKey, 3600, JSON.stringify(categories));
+    await this.redis.set(cacheKey, JSON.stringify(categories), 3600);
 
     return categories;
   }

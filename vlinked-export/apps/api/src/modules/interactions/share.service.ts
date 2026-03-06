@@ -126,7 +126,7 @@ export class ShareService {
       }, {} as Record<string, number>),
     };
 
-    await this.redis.setex(cacheKey, 300, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), 300);
 
     return result;
   }
@@ -153,7 +153,7 @@ export class ShareService {
           select: {
             profile: {
               select: {
-                name: true,
+                displayName: true,
                 avatarUrl: true,
               },
             },
@@ -168,8 +168,8 @@ export class ShareService {
       thumbnailUrl: video.thumbnailUrl,
       sharesCount: video.sharesCount,
       author: {
-        name: video.user.profile?.name,
-        avatarUrl: video.user.profile?.avatarUrl,
+        name: video.user.profile?.displayName || null,
+        avatarUrl: video.user.profile?.avatarUrl || null,
       },
     }));
   }
@@ -204,7 +204,7 @@ export class ShareService {
     const shortCode = this.generateShortCode();
     
     // Salvar mapeamento no Redis (expira em 30 dias)
-    await this.redis.setex(`shorturl:${shortCode}`, 30 * 24 * 3600, videoId);
+    await this.redis.set(`shorturl:${shortCode}`, videoId, 30 * 24 * 3600);
     
     const baseUrl = process.env.FRONTEND_URL || 'https://vlinked.app';
     return `${baseUrl}/s/${shortCode}`;

@@ -73,7 +73,7 @@ export class ViewService {
         isNewView = false;
       } else {
         // Registrar view no Redis (cooldown de 24h)
-        await this.redis.setex(viewKey, this.VIEW_COOLDOWN, Date.now().toString());
+        await this.redis.set(viewKey, Date.now().toString(), this.VIEW_COOLDOWN);
       }
     }
 
@@ -264,7 +264,7 @@ export class ViewService {
       return null;
     }
 
-    await this.redis.setex(cacheKey, 300, JSON.stringify(metrics));
+    await this.redis.set(cacheKey, JSON.stringify(metrics), 300);
 
     return metrics;
   }
@@ -289,7 +289,7 @@ export class ViewService {
             id: true,
             profile: {
               select: {
-                name: true,
+                displayName: true,
                 avatarUrl: true,
               },
             },
@@ -306,8 +306,8 @@ export class ViewService {
         id: view.id,
         user: view.user ? {
           id: view.user.id,
-          name: view.user.profile?.name,
-          avatarUrl: view.user.profile?.avatarUrl,
+          name: view.user.profile?.displayName || null,
+          avatarUrl: view.user.profile?.avatarUrl || null,
         } : null,
         watchTime: view.duration,
         completed: view.completed,
@@ -344,7 +344,7 @@ export class ViewService {
               select: {
                 profile: {
                   select: {
-                    name: true,
+                    displayName: true,
                     avatarUrl: true,
                   },
                 },
@@ -367,8 +367,8 @@ export class ViewService {
         watchTime: view.duration,
         completed: view.completed,
         author: {
-          name: view.video.user.profile?.name,
-          avatarUrl: view.video.user.profile?.avatarUrl,
+          name: view.video.user.profile?.displayName || null,
+          avatarUrl: view.video.user.profile?.avatarUrl || null,
         },
         viewedAt: view.createdAt,
       })),

@@ -154,7 +154,7 @@ export class LikeService {
     });
 
     const hasLiked = !!like;
-    await this.redis.setex(cacheKey, this.CACHE_TTL, hasLiked ? '1' : '0');
+    await this.redis.set(cacheKey, hasLiked ? '1' : '0', this.CACHE_TTL);
 
     return hasLiked;
   }
@@ -176,7 +176,7 @@ export class LikeService {
             id: true,
             profile: {
               select: {
-                name: true,
+                displayName: true,
                 avatarUrl: true,
               },
             },
@@ -193,8 +193,8 @@ export class LikeService {
         id: like.id,
         user: {
           id: like.user.id,
-          name: like.user.profile?.name,
-          avatarUrl: like.user.profile?.avatarUrl,
+          name: like.user.profile?.displayName || null,
+          avatarUrl: like.user.profile?.avatarUrl || null,
         },
         createdAt: like.createdAt,
       })),
@@ -221,7 +221,7 @@ export class LikeService {
               select: {
                 profile: {
                   select: {
-                    name: true,
+                    displayName: true,
                     avatarUrl: true,
                   },
                 },
@@ -243,8 +243,8 @@ export class LikeService {
         duration: like.video.duration,
         viewsCount: like.video.viewsCount,
         author: {
-          name: like.video.user.profile?.name,
-          avatarUrl: like.video.user.profile?.avatarUrl,
+          name: like.video.user.profile?.displayName || null,
+          avatarUrl: like.video.user.profile?.avatarUrl || null,
         },
         likedAt: like.createdAt,
       })),
@@ -262,7 +262,7 @@ export class LikeService {
     for (const pattern of patterns) {
       const keys = await this.redis.keys(pattern);
       if (keys.length > 0) {
-        await this.redis.del(...keys);
+        await this.redis.del(keys);
       }
     }
   }

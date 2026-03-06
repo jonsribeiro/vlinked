@@ -163,7 +163,7 @@ export class FollowService {
     });
 
     const isFollowing = !!follow;
-    await this.redis.setex(cacheKey, this.CACHE_TTL, isFollowing ? '1' : '0');
+    await this.redis.set(cacheKey, isFollowing ? '1' : '0', this.CACHE_TTL);
 
     return isFollowing;
   }
@@ -185,9 +185,9 @@ export class FollowService {
             id: true,
             profile: {
               select: {
-                name: true,
+                displayName: true,
                 avatarUrl: true,
-                headline: true,
+                profession: true,
               },
             },
           },
@@ -201,9 +201,9 @@ export class FollowService {
     return {
       data: items.map((f) => ({
         id: f.follower.id,
-        name: f.follower.profile?.name,
-        avatarUrl: f.follower.profile?.avatarUrl,
-        headline: f.follower.profile?.headline,
+        name: f.follower.profile?.displayName || null,
+        avatarUrl: f.follower.profile?.avatarUrl || null,
+        profession: f.follower.profile?.profession || null,
         followedAt: f.createdAt,
       })),
       nextCursor: hasMore ? items[items.length - 1].id : undefined,
@@ -231,9 +231,9 @@ export class FollowService {
             id: true,
             profile: {
               select: {
-                name: true,
+                displayName: true,
                 avatarUrl: true,
-                headline: true,
+                profession: true,
               },
             },
           },
@@ -247,9 +247,9 @@ export class FollowService {
     return {
       data: items.map((f) => ({
         id: f.following.id,
-        name: f.following.profile?.name,
-        avatarUrl: f.following.profile?.avatarUrl,
-        headline: f.following.profile?.headline,
+        name: f.following.profile?.displayName || null,
+        avatarUrl: f.following.profile?.avatarUrl || null,
+        profession: f.following.profile?.profession || null,
         followedAt: f.createdAt,
       })),
       nextCursor: hasMore ? items[items.length - 1].id : undefined,
@@ -281,7 +281,7 @@ export class FollowService {
       followingCount,
     };
 
-    await this.redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
 
     return result;
   }
@@ -319,7 +319,7 @@ export class FollowService {
           select: {
             profile: {
               select: {
-                name: true,
+                displayName: true,
                 avatarUrl: true,
               },
             },
@@ -340,8 +340,8 @@ export class FollowService {
         viewsCount: video.viewsCount,
         likesCount: video.likesCount,
         author: {
-          name: video.user.profile?.name,
-          avatarUrl: video.user.profile?.avatarUrl,
+          name: video.user.profile?.displayName || null,
+          avatarUrl: video.user.profile?.avatarUrl || null,
         },
         publishedAt: video.publishedAt,
       })),
@@ -358,6 +358,6 @@ export class FollowService {
       `feed:following:${followerId}:*`,
     ];
 
-    await this.redis.del(...keys);
+    await this.redis.del(keys);
   }
 }

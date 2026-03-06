@@ -122,7 +122,7 @@ export class DiscoveryService {
       topics,
     };
 
-    await this.redis.setex(cacheKey, this.TRENDING_CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.TRENDING_CACHE_TTL);
 
     return result;
   }
@@ -374,7 +374,7 @@ export class DiscoveryService {
       }),
     );
 
-    await this.redis.setex(cacheKey, this.CATEGORIES_CACHE_TTL, JSON.stringify(categories));
+    await this.redis.set(cacheKey, JSON.stringify(categories), this.CATEGORIES_CACHE_TTL);
 
     return categories;
   }
@@ -406,7 +406,7 @@ export class DiscoveryService {
       featuredVideos: videos,
     };
 
-    await this.redis.setex(cacheKey, this.TRENDING_CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.TRENDING_CACHE_TTL);
 
     return result;
   }

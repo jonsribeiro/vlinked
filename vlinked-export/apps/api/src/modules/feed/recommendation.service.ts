@@ -126,7 +126,7 @@ export class RecommendationService {
 
     const result = sortedVideos.map(v => this.formatVideo(v));
 
-    await this.redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
 
     return result;
   }
@@ -241,7 +241,7 @@ export class RecommendationService {
 
     const result = sorted.map(v => this.formatVideo(v));
 
-    await this.redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
 
     return result;
   }
@@ -352,7 +352,7 @@ export class RecommendationService {
 
     const result = sortedVideos.map(v => this.formatVideo(v));
 
-    await this.redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
 
     return result;
   }

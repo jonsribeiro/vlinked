@@ -40,14 +40,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async set(key: string, value: string, ttl?: number): Promise<void> {
     if (ttl) {
-      await this.client.setex(key, ttl, value);
+      await this.client.set(key, value, 'EX', ttl);
     } else {
       await this.client.set(key, value);
     }
   }
 
-  async del(key: string): Promise<void> {
-    await this.client.del(key);
+  async del(key: string | string[]): Promise<void> {
+    if (Array.isArray(key)) {
+      if (key.length > 0) {
+        await this.client.del(...key);
+      }
+    } else {
+      await this.client.del(key);
+    }
   }
 
   async expire(key: string, seconds: number): Promise<void> {
@@ -59,6 +65,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async increment(key: string): Promise<number> {
+    return this.client.incr(key);
+  }
+
+  async incr(key: string): Promise<number> {
     return this.client.incr(key);
   }
 
@@ -77,6 +87,27 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async exists(key: string): Promise<boolean> {
     const result = await this.client.exists(key);
     return result === 1;
+  }
+
+  /**
+   * Find keys matching a pattern
+   */
+  async keys(pattern: string): Promise<string[]> {
+    return this.client.keys(pattern);
+  }
+
+  /**
+   * Push values to the left of a list
+   */
+  async lpush(key: string, ...values: string[]): Promise<number> {
+    return this.client.lpush(key, ...values);
+  }
+
+  /**
+   * Get a range of values from a list
+   */
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    return this.client.lrange(key, start, stop);
   }
 
   getClient(): Redis {

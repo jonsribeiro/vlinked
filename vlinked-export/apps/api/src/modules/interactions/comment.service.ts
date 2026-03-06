@@ -61,7 +61,7 @@ export class CommentService {
               id: true,
               profile: {
                 select: {
-                  name: true,
+                  displayName: true,
                   avatarUrl: true,
                 },
               },
@@ -101,8 +101,8 @@ export class CommentService {
       content: comment.content,
       author: {
         id: comment.user.id,
-        name: comment.user.profile?.name,
-        avatarUrl: comment.user.profile?.avatarUrl,
+        name: comment.user.profile?.displayName || null,
+        avatarUrl: comment.user.profile?.avatarUrl || null,
       },
       createdAt: comment.createdAt,
       parentId: comment.parentId,
@@ -146,7 +146,7 @@ export class CommentService {
             id: true,
             profile: {
               select: {
-                name: true,
+                displayName: true,
                 avatarUrl: true,
               },
             },
@@ -171,8 +171,8 @@ export class CommentService {
         content: comment.content,
         author: {
           id: comment.user.id,
-          name: comment.user.profile?.name,
-          avatarUrl: comment.user.profile?.avatarUrl,
+          name: comment.user.profile?.displayName || null,
+          avatarUrl: comment.user.profile?.avatarUrl || null,
         },
         createdAt: comment.createdAt,
         likesCount: comment.likesCount || 0,
@@ -185,7 +185,7 @@ export class CommentService {
       }),
     };
 
-    await this.redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result));
+    await this.redis.set(cacheKey, JSON.stringify(result), this.CACHE_TTL);
 
     return result;
   }
@@ -213,7 +213,7 @@ export class CommentService {
             id: true,
             profile: {
               select: {
-                name: true,
+                displayName: true,
                 avatarUrl: true,
               },
             },
@@ -231,8 +231,8 @@ export class CommentService {
         content: reply.content,
         author: {
           id: reply.user.id,
-          name: reply.user.profile?.name,
-          avatarUrl: reply.user.profile?.avatarUrl,
+          name: reply.user.profile?.displayName || null,
+          avatarUrl: reply.user.profile?.avatarUrl || null,
         },
         createdAt: reply.createdAt,
         parentId: reply.parentId,
@@ -312,7 +312,7 @@ export class CommentService {
     for (const pattern of patterns) {
       const keys = await this.redis.keys(pattern);
       if (keys.length > 0) {
-        await this.redis.del(...keys);
+        await this.redis.del(keys);
       }
     }
   }

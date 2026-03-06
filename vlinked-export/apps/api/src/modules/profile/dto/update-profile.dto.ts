@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MaxLength, IsUrl } from 'class-validator';
+import { IsString, IsOptional, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateProfileDto {
@@ -43,14 +43,14 @@ export class UpdateProfileDto {
   city?: string;
 
   @ApiProperty({
-    description: 'Estado',
+    description: 'Estado/Região',
     example: 'SP',
     required: false,
   })
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  state?: string;
+  region?: string;
 
   @ApiProperty({
     description: 'País',

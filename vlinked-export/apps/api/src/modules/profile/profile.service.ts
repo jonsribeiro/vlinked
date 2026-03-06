@@ -19,7 +19,7 @@ export class ProfileService {
    * Cria um perfil para o usuário
    */
   async create(userId: string, createProfileDto: CreateProfileDto) {
-    const { displayName, slug, bio, profession, city, state, country } = createProfileDto;
+    const { displayName, slug, bio, profession, city, region, country } = createProfileDto;
 
     // Verificar se slug já existe
     const existingSlug = await this.prisma.profile.findUnique({
@@ -47,7 +47,7 @@ export class ProfileService {
         bio,
         profession,
         city,
-        state,
+        region,
         country,
       },
     });
