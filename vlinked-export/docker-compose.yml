@@ -87,72 +87,72 @@ services:
     command: sh -c "npx prisma migrate deploy && npx prisma db seed && npm run dev"
 
   # Video Processing Worker
-  video-worker:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    container_name: vlinked-video-worker
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://vlinked:vlinked_password@postgres:5432/vlinked
-      REDIS_URL: redis://redis:6379
-      MINIO_ENDPOINT: minio
-      MINIO_PORT: 9000
-      MINIO_USE_SSL: "false"
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET: vlinked-uploads
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-    volumes:
-      - ./apps/api:/app
-      - /app/node_modules
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: npm run worker:video
+#  video-worker:
+ #   build:
+  #    context: ./apps/api
+   #   dockerfile: Dockerfile
+    #container_name: vlinked-video-worker
+    #environment:
+     # NODE_ENV: development
+      #DATABASE_URL: postgresql://vlinked:vlinked_password@postgres:5432/vlinked
+      #REDIS_URL: redis://redis:6379
+     # MINIO_ENDPOINT: minio
+      #MINIO_PORT: 9000
+      #MINIO_USE_SSL: "false"
+      #MINIO_ACCESS_KEY: minioadmin
+      #MINIO_SECRET_KEY: minioadmin
+      #MINIO_BUCKET: vlinked-uploads
+      #OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    #volumes:
+     # - ./apps/api:/app
+      #- /app/node_modules
+    #depends_on:
+     # postgres:
+      #  condition: service_healthy
+      #redis:
+       # condition: service_healthy
+    #command: npm run worker:video
 
   # AI Analysis Worker
-  ai-worker:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    container_name: vlinked-ai-worker
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://vlinked:vlinked_password@postgres:5432/vlinked
-      REDIS_URL: redis://redis:6379
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-    volumes:
-      - ./apps/api:/app
-      - /app/node_modules
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: npm run worker:ai
+ #ai-worker:
+    #build:
+     # context: ./apps/api
+      #dockerfile: Dockerfile
+    #container_name: vlinked-ai-worker
+    #environment:
+     # NODE_ENV: development
+      #DATABASE_URL: postgresql://vlinked:vlinked_password@postgres:5432/vlinked
+      #REDIS_URL: redis://redis:6379
+      #OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    #volumes:
+     # - ./apps/api:/app
+      #- /app/node_modules
+    #depends_on:
+     # postgres:
+      #  condition: service_healthy
+      #redis:
+       # condition: service_healthy
+    #command: npm run worker:ai
 
   # Feed Indexer (runs periodically)
-  feed-indexer:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    container_name: vlinked-feed-indexer
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://vlinked:vlinked_password@postgres:5432/vlinked
-      REDIS_URL: redis://redis:6379
-    volumes:
-      - ./apps/api:/app
-      - /app/node_modules
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: npm run indexer:feed
+  #feed-indexer:
+    #build:
+     # context: ./apps/api
+      #dockerfile: Dockerfile
+    #container_name: vlinked-feed-indexer
+    #environment:
+     # NODE_ENV: development
+      #DATABASE_URL: postgresql://vlinked:vlinked_password@postgres:5432/vlinked
+      #REDIS_URL: redis://redis:6379
+    #volumes:
+     # - ./apps/api:/app
+      #- /app/node_modules
+    #depends_on:
+     # postgres:
+      #  condition: service_healthy
+      #redis:
+       # condition: service_healthy
+    #command: npm run indexer:feed
 
 volumes:
   postgres_data:
